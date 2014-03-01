@@ -23,6 +23,10 @@ def Shows():
 	for show in JSON.ObjectFromURL(SHOWS_URL):
 		show_id = show['assetID']
 		title = show['title']
+
+		if title in ('Syfy Original Movies'):
+			continue
+
 		summary = show['description']
 		thumb = show['images'][0]['images']['show_tile']
 
@@ -33,6 +37,7 @@ def Shows():
 			thumb = Resource.ContentsOfURLWithFallback(thumb)
 		))
 
+	oc.objects.sort(key = lambda obj: obj.title)
 	return oc
 
 ####################################################################################################
