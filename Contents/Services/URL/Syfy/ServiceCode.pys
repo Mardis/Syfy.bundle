@@ -1,0 +1,82 @@
+EPISODES_URL = 'http://tve-atcnbc.nbcuni.com/ep-live/2/syfy/container/x/iPad/%s'
+
+AudioStreamObject.language_code = Locale.Language.English
+
+####################################################################################################
+def NormalizeURL(url):
+
+	return url
+
+####################################################################################################
+def MetadataObjectForURL(url):
+
+	(show_id, video_id) = url.split('#')[-1].split('|')
+	found_episode = False
+
+	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['assetsX']:
+
+		if episode['assetID'].endswith(video_id):
+
+			return EpisodeObject(
+				show = episode['parentContainerTitle']
+				season = episode['seasonNumber']
+				index = episode['episodeNumber']
+				title = episode['title']
+				summary = episode['description']
+				duration = episode['totalDuration']
+				thumb = episode['images'][0]['images']['episode_banner']
+				originally_available_at = Datetime.FromTimestamp(episode['firstAiredDate']).date()
+			)
+
+	raise Ex.MediaNotAvailable
+
+####################################################################################################
+def MediaObjectsForURL(url):
+
+	return [
+		MediaObject(
+			parts = [
+				PartObject(
+					key=HTTPLiveStreamURL(Callback(PlayVideo, url=url))
+				)
+			],
+			video_resolution = '720',
+			aspect_ratio = '1.78',
+			audio_channels = 2,
+			optimized_for_streaming = True
+		)
+	]
+
+####################################################################################################
+@indirect
+def PlayVideo(url):
+
+	(show_id, video_id) = url.split('#')[-1].split('|')
+	found_episode = False
+
+	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['assetsX']:
+
+		if episode['assetID'].endswith(video_id):
+
+			m3u8_url = episode['videoURL']
+
+			try:
+				m3u8 = HTTP.Request(m3u8_url, cacheTime=10, follow_redirects=False).content
+			except Ex.RedirectError, e:
+				if 'Location' in e.headers:
+					m3u8_url = e.headers['Location']
+			except Ex.HTTPError, e:
+				if e.code == 403:
+					raise Ex.MediaGeoblocked
+				elif e.code == 404:
+					raise Ex.MediaNotAvailable
+				else:
+					raise Ex.MediaNotAvailable
+			except:
+				raise Ex.MediaNotAvailable
+
+			return IndirectResponse(VideoClipObject,
+				key = HTTPLiveStreamURL(m3u8_url)
+			)
+
+	raise Ex.MediaNotAvailable
