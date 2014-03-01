@@ -18,13 +18,13 @@ def MetadataObjectForURL(url):
 		if episode['assetID'].endswith(video_id):
 
 			return EpisodeObject(
-				show = episode['parentContainerTitle']
-				season = episode['seasonNumber']
-				index = episode['episodeNumber']
-				title = episode['title']
-				summary = episode['description']
-				duration = episode['totalDuration']
-				thumb = episode['images'][0]['images']['episode_banner']
+				show = episode['parentContainerTitle'],
+				season = int(episode['seasonNumber']),
+				index = int(episode['episodeNumber']),
+				title = episode['title'],
+				summary = episode['description'],
+				duration = episode['totalDuration'],
+				thumb = episode['images'][0]['images']['episode_banner'],
 				originally_available_at = Datetime.FromTimestamp(episode['firstAiredDate']).date()
 			)
 
