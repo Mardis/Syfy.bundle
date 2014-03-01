@@ -65,4 +65,7 @@ def Episodes(show_id, show):
 			originally_available_at = Datetime.FromTimestamp(episode['firstAiredDate'])
 		))
 
+	if len(oc) < 1:
+		return ObjectContainer(header='Empty', message='There are no episodes available for this show')
+
 	return oc
