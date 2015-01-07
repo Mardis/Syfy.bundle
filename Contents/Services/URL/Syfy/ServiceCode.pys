@@ -1,4 +1,4 @@
-EPISODES_URL = 'http://tve-atcnbc.nbcuni.com/ep-live/2/syfy/container/x/iPad/%s'
+EPISODES_URL = 'http://tve-atcnbce.nbcuni.com/live/3/syfy/containers/%s/iPad?filterBy=episode'
 
 AudioStreamObject.language_code = Locale.Language.English
 
@@ -13,7 +13,7 @@ def MetadataObjectForURL(url):
 	(show_id, video_id) = url.split('#')[-1].split('|')
 	found_episode = False
 
-	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['assetsX']:
+	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['results']:
 
 		if episode['assetID'].endswith(video_id):
 
@@ -54,7 +54,7 @@ def PlayVideo(url):
 	(show_id, video_id) = url.split('#')[-1].split('|')
 	found_episode = False
 
-	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['assetsX']:
+	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['results']:
 
 		if episode['assetID'].endswith(video_id):
 

@@ -1,12 +1,12 @@
-SHOWS_URL = 'http://tve-atcnbc.nbcuni.com/ep-live/2/syfy/shows/iPad'
-EPISODES_URL = 'http://tve-atcnbc.nbcuni.com/ep-live/2/syfy/container/x/iPad/%s'
+SHOWS_URL = 'http://tve-atcnbce.nbcuni.com/live/3/syfy/containers/iPad'
+EPISODES_URL = 'http://tve-atcnbce.nbcuni.com/live/3/syfy/containers/%s/iPad?filterBy=episode'
 
 ####################################################################################################
 def Start():
 
 	ObjectContainer.title1 = 'Syfy'
 	HTTP.CacheTime = CACHE_1HOUR
-	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36'
+	HTTP.Headers['User-Agent'] = 'BRNetworking/2.7.0.1449 (iPad;iPhone OS-8.1)'
 
 ####################################################################################################
 @handler('/video/syfy', 'Syfy')
@@ -46,7 +46,7 @@ def Episodes(show_id, show):
 
 	oc = ObjectContainer(title2=show)
 
-	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['assetsX']:
+	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['results']:
 
 		if episode['type'] != 'video' or episode['subtype'] != 'episode' or episode['requiresAuth'] is not False:
 			continue
