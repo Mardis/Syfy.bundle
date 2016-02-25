@@ -1,4 +1,4 @@
-EPISODES_URL = 'http://tve-atcnbce.nbcuni.com/live/3/syfy/containers/%s/iPad?filterBy=episode'
+VIDEOS_URL = 'http://tve-atcnbce.nbcuni.com/live/3/syfy/containers/%s/iPad'
 
 AudioStreamObject.language_code = Locale.Language.English
 
@@ -11,22 +11,33 @@ def NormalizeURL(url):
 def MetadataObjectForURL(url):
 
 	(show_id, video_id) = url.split('#')[-1].split('|')
-	found_episode = False
 
-	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['results']:
+	for video in JSON.ObjectFromURL(VIDEOS_URL % show_id)['results']:
 
-		if episode['assetID'].endswith(video_id):
+		if video['assetID'].endswith(video_id):
 
-			return EpisodeObject(
-				show = episode['parentContainerTitle'],
-				season = int(episode['seasonNumber']),
-				index = int(episode['episodeNumber']),
-				title = episode['title'],
-				summary = episode['description'],
-				duration = episode['totalDuration'],
-				thumb = episode['images'][0]['images']['episode_banner'],
-				originally_available_at = Datetime.FromTimestamp(episode['firstAiredDate']).date()
-			)
+			if video['subtype'] == 'episode':
+
+				return EpisodeObject(
+					show = video['parentContainerTitle'],
+					season = int(video['seasonNumber']),
+					index = int(video['episodeNumber']),
+					title = video['title'],
+					summary = video['description'],
+					duration = video['totalDuration'],
+					thumb = video['images'][0]['images']['episode_banner'],
+					originally_available_at = Datetime.FromTimestamp(video['firstAiredDate']).date()
+				)
+
+			elif video['subtype'] == 'clip':
+
+				return VideoClipObject(
+					title = video['title'],
+					summary = video['description'],
+					duration = video['totalDuration'],
+					thumb = video['images'][0]['images']['episode_banner'],
+					originally_available_at = Datetime.FromTimestamp(video['firstAiredDate']).date()
+				)
 
 	raise Ex.MediaNotAvailable
 
@@ -52,19 +63,20 @@ def MediaObjectsForURL(url):
 def PlayVideo(url):
 
 	(show_id, video_id) = url.split('#')[-1].split('|')
-	found_episode = False
 
-	for episode in JSON.ObjectFromURL(EPISODES_URL % show_id)['results']:
+	for video in JSON.ObjectFromURL(VIDEOS_URL % show_id)['results']:
 
-		if episode['assetID'].endswith(video_id):
+		if video['assetID'].endswith(video_id):
 
-			m3u8_url = episode['videoURL']
+			m3u8_url = video['videoURL']
 
 			try:
 				m3u8 = HTTP.Request(m3u8_url, cacheTime=10, follow_redirects=False).content
 			except Ex.RedirectError, e:
 				if 'Location' in e.headers:
 					m3u8_url = e.headers['Location']
+				else:
+					raise Ex.MediaNotAvailable
 			except Ex.HTTPError, e:
 				if e.code == 403:
 					raise Ex.MediaGeoblocked
@@ -75,8 +87,6 @@ def PlayVideo(url):
 			except:
 				raise Ex.MediaNotAvailable
 
-			return IndirectResponse(VideoClipObject,
-				key = HTTPLiveStreamURL(m3u8_url)
-			)
+			return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(m3u8_url))
 
 	raise Ex.MediaNotAvailable
