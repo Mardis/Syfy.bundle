@@ -1,6 +1,4 @@
-VIDEOS_URL = 'http://tve-atcnbce.nbcuni.com/live/3/syfy/containers/%s/iPad'
-
-AudioStreamObject.language_code = Locale.Language.English
+VIDEOS_URL = 'http://tveatc-usa.nbcuni.com/awe3/live/5/syfy/containers/iPadRetina/%s'
 
 ####################################################################################################
 def NormalizeURL(url):
@@ -10,36 +8,61 @@ def NormalizeURL(url):
 ####################################################################################################
 def MetadataObjectForURL(url):
 
-	(show_id, video_id) = url.split('#')[-1].split('|')
+	(show_id, video_id) = url.split('://')[-1].split('/')
 
-	for video in JSON.ObjectFromURL(VIDEOS_URL % show_id)['results']:
+	show = None
+	subtype = 'episode'
+	season = None
+	index = None
 
-		if video['assetID'].endswith(video_id):
+	found_episode = False
 
-			if video['subtype'] == 'episode':
+	for episode in JSON.ObjectFromURL(VIDEOS_URL % show_id)['results']:
 
-				return EpisodeObject(
-					show = video['parentContainerTitle'],
-					season = int(video['seasonNumber']),
-					index = int(video['episodeNumber']),
-					title = video['title'],
-					summary = video['description'],
-					duration = video['totalDuration'],
-					thumb = video['images'][0]['images']['episode_banner'],
-					originally_available_at = Datetime.FromTimestamp(video['firstAiredDate']).date()
-				)
+		if episode['assetID'].endswith(video_id):
 
-			elif video['subtype'] == 'clip':
+			show = episode['parentContainerTitle']
+			subtype = episode['subtype']
+			season = episode['seasonNumber'] if 'seasonNumber' in episode else None
+			index = episode['episodeNumber'] if 'episodeNumber' in episode else None
+			title = episode['title']
+			summary = episode['description']
+			duration = episode['totalDuration']
+			originally_available_at = Datetime.FromTimestamp(episode['firstAiredDate']).date()
 
-				return VideoClipObject(
-					title = video['title'],
-					summary = video['description'],
-					duration = video['totalDuration'],
-					thumb = video['images'][0]['images']['episode_banner'],
-					originally_available_at = Datetime.FromTimestamp(video['firstAiredDate']).date()
-				)
+			try:
+				thumb = episode['images'][0]['images']['video_thumbnail_16_by_9']
+			except:
+				thumb = ''
 
-	raise Ex.MediaNotAvailable
+			found_episode = True
+			break
+
+	if not found_episode or episode['requiresAuth']:
+		raise Ex.MediaNotAvailable
+
+	if show and season and index and subtype == 'episode':
+
+		return EpisodeObject(
+			show = show,
+			season = int(season),
+			index = int(index),
+			title = title,
+			summary = summary,
+			duration = duration,
+			thumb = Resource.ContentsOfURLWithFallback(thumb),
+			originally_available_at = originally_available_at
+		)
+
+	else:
+
+		return VideoClipObject(
+			title = title,
+			summary = summary,
+			duration = duration,
+			thumb = Resource.ContentsOfURLWithFallback(thumb),
+			originally_available_at = originally_available_at
+		)
 
 ####################################################################################################
 def MediaObjectsForURL(url):
@@ -52,7 +75,6 @@ def MediaObjectsForURL(url):
 				)
 			],
 			video_resolution = '720',
-			aspect_ratio = '1.78',
 			audio_channels = 2,
 			optimized_for_streaming = True
 		)
@@ -62,21 +84,20 @@ def MediaObjectsForURL(url):
 @indirect
 def PlayVideo(url):
 
-	(show_id, video_id) = url.split('#')[-1].split('|')
+	(show_id, video_id) = url.split('://')[-1].split('/')
+	found_episode = False
 
-	for video in JSON.ObjectFromURL(VIDEOS_URL % show_id)['results']:
+	for episode in JSON.ObjectFromURL(VIDEOS_URL % show_id)['results']:
 
-		if video['assetID'].endswith(video_id):
+		if episode['assetID'].endswith(video_id):
 
-			m3u8_url = video['videoURL']
+			m3u8_url = episode['videoURL']
 
 			try:
 				m3u8 = HTTP.Request(m3u8_url, cacheTime=10, follow_redirects=False).content
 			except Ex.RedirectError, e:
 				if 'Location' in e.headers:
 					m3u8_url = e.headers['Location']
-				else:
-					raise Ex.MediaNotAvailable
 			except Ex.HTTPError, e:
 				if e.code == 403:
 					raise Ex.MediaGeoblocked
@@ -87,6 +108,8 @@ def PlayVideo(url):
 			except:
 				raise Ex.MediaNotAvailable
 
-			return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(m3u8_url))
+			return IndirectResponse(VideoClipObject,
+				key = HTTPLiveStreamURL(m3u8_url)
+			)
 
 	raise Ex.MediaNotAvailable
